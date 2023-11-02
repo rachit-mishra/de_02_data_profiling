@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mage-user
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: job-manager
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch", "extensions"]
+  resources: ["jobs", "jobs/status"]
+  verbs: ["create", "delete", "get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mage-job-manager
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: mage-user # Name of the ServiceAccount
+  namespace: default
+roleRef:
+  kind: Role # This must be Role or ClusterRole
+  name: job-manager # This must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mage-server
+spec:
+  containers:
+  - name: mage-server
+    image: mage_spark
+    imagePullPolicy: Never
+    ports:
+    - containerPort: 6789
+    volumeMounts:
+    - name: mage-fs
+      mountPath: /home/src
+    resources:
+      requests:
+        memory: "3Gi"
+        cpu: "2"
+      limits:
+        memory: "4Gi"
+        cpu: "4"
+  volumes:
+  - name: mage-fs
+    hostPath:
+      path: /Users/rachitmishra/Documents/personal/projs/substack_blog/de_02_data_profiling/mage_aviation_engineering
+  serviceAccountName: mage-user
